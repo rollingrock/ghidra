@@ -137,7 +137,7 @@ public class RecoveredClassHelper {
 	protected final boolean createBookmarks;
 	protected final boolean useShortTemplates;
 	protected final boolean nameVfunctions;
-	
+
 	private Set<Function> allVfunctionsSet = new HashSet<Function>();
 
 
@@ -5440,7 +5440,10 @@ public class RecoveredClassHelper {
 	public void separateInlinedConstructorDestructors(List<RecoveredClass> recoveredClasses)
 			throws CancelledException {
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 			List<Function> indeterminateFunctions = recoveredClass.getIndeterminateList();
 			Iterator<Function> indeterminateIterator = indeterminateFunctions.iterator();
@@ -5750,8 +5753,10 @@ public class RecoveredClassHelper {
 	public void findDestructorsWithNoParamsOrReturn(List<RecoveredClass> recoveredClasses)
 			throws CancelledException {
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
-
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 
 			List<Function> indeterminateFunctions = recoveredClass.getIndeterminateList();
@@ -5822,7 +5827,10 @@ public class RecoveredClassHelper {
 	 */
 	public void findMoreInlinedConstructors(List<RecoveredClass> recoveredClasses)
 			throws CancelledException, InvalidInputException, DuplicateNameException {
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 			List<Function> constructorList = recoveredClass.getConstructorList();
 			Iterator<Function> constructorIterator = constructorList.iterator();
@@ -5982,8 +5990,12 @@ public class RecoveredClassHelper {
 			throws CancelledException, InvalidInputException, DuplicateNameException,
 			CircularDependencyException {
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
+
 			List<Function> inlineFunctionsList =
 				new ArrayList<>(recoveredClass.getIndeterminateInlineList());
 
@@ -6159,7 +6171,10 @@ public class RecoveredClassHelper {
 			List<RecoveredClass> recoveredClasses) throws CancelledException, InvalidInputException,
 			DuplicateNameException, CircularDependencyException {
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 			List<Function> indeterminateList = recoveredClass.getIndeterminateList();
 			Iterator<Function> indeterminateIterator = indeterminateList.iterator();
@@ -6462,7 +6477,10 @@ public class RecoveredClassHelper {
 			List<RecoveredClass> recoveredClasses) throws CancelledException, InvalidInputException,
 			DuplicateNameException, CircularDependencyException {
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 			List<RecoveredClass> parentsToProcess = recoveredClass.getParentList();
 
@@ -6495,8 +6513,12 @@ public class RecoveredClassHelper {
 			List<RecoveredClass> recoveredClasses) throws CancelledException, InvalidInputException,
 			DuplicateNameException, CircularDependencyException {
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
+
 			List<Function> indeterminateList = recoveredClass.getIndeterminateList();
 			if (indeterminateList.isEmpty()) {
 				continue;
@@ -6564,7 +6586,10 @@ public class RecoveredClassHelper {
 			List<RecoveredClass> recoveredClasses) throws CancelledException, InvalidInputException,
 			DuplicateNameException, CircularDependencyException {
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 			List<Function> indeterminateList =
 				new ArrayList<Function>(recoveredClass.getIndeterminateInlineList());
@@ -6650,7 +6675,10 @@ public class RecoveredClassHelper {
 	public void findDestructorsUsingAtexitCalledFunctions(List<RecoveredClass> recoveredClasses)
 			throws CancelledException, InvalidInputException, DuplicateNameException {
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 			List<Function> indeterminateList = recoveredClass.getIndeterminateList();
 
@@ -6698,7 +6726,6 @@ public class RecoveredClassHelper {
 	 */
 	public void findDeletingDestructors(List<RecoveredClass> recoveredClasses,
 			List<Address> allVftables) throws Exception {
-
 		if (recoveredClasses.isEmpty()) {
 			return;
 		}
@@ -6712,7 +6739,10 @@ public class RecoveredClassHelper {
 		}
 
 		// iterate over all class virtual functions to find the ones that are deleting destructors
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 
 			List<Function> vfunctions = recoveredClass.getAllVirtualFunctions();
@@ -6819,7 +6849,10 @@ public class RecoveredClassHelper {
 
 		operatorDeletes = new ArrayList<Function>(operatorDeletesSet);
 
+		int countProgress = 0;
 		for (Function operatorDeleteFunction : operatorDeletes) {
+			monitor.setMaximum(operatorDeletes.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 
 			bookmarkAddress(operatorDeleteFunction.getEntryPoint(), "operator_delete function",
@@ -6837,7 +6870,10 @@ public class RecoveredClassHelper {
 		}
 		operatorNews = new ArrayList<Function>(operatorNewsSet);
 
+		countProgress = 0;
 		for (Function operatorNewFunction : operatorNews) {
+			monitor.setMaximum(operatorNews.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 
 			bookmarkAddress(operatorNewFunction.getEntryPoint(), "operator_new function",
@@ -7212,7 +7248,10 @@ public class RecoveredClassHelper {
 
 		List<Function> allConstructorDestructorFunctions = new ArrayList<Function>();
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 
 			monitor.checkCancelled();
 
@@ -7328,7 +7367,10 @@ public class RecoveredClassHelper {
 
 		Function possiblePureCall = null;
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 
 			if (recoveredClass.hasChildClass()) {
@@ -7431,13 +7473,14 @@ public class RecoveredClassHelper {
 	 */
 	protected void trimConstructorDestructorLists(List<RecoveredClass> recoveredClasses,
 			List<Address> vftables) throws CancelledException {
-
 		if (recoveredClasses.isEmpty()) {
 			return;
 		}
 
+		int countProgress = 0;
 		for (RecoveredClass recoveredClass : recoveredClasses) {
-
+			monitor.setMaximum(recoveredClasses.size());
+			monitor.setProgress(countProgress++);
 			monitor.checkCancelled();
 
 			List<Function> constructorOrDestructorFunctions =
