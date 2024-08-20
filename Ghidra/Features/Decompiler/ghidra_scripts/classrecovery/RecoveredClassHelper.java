@@ -140,6 +140,7 @@ public class RecoveredClassHelper {
 	
 	private Set<Function> allVfunctionsSet = new HashSet<Function>();
 
+	public HashMap<Address, Set<Function>> allVfunctions = new HashMap<>();
 
 	public RecoveredClassHelper(Program program, ServiceProvider serviceProvider,
 			FlatProgramAPI api, boolean createBookmarks, boolean useShortTemplates,
@@ -485,20 +486,25 @@ public class RecoveredClassHelper {
 		return functionToLoadPcodeOps.get(function);
 	}
 
-	public Set<Function> getAllVfunctions(List<Address> vftableAddresses)
-			throws CancelledException {
-
+	public Set<Function> getAllVfunctions(List<Address> vftableAddresses) throws CancelledException {
 		if (vftableAddresses.isEmpty()) {
-			return allVfunctionsSet;
-		}
-		if (allVfunctionsSet.isEmpty()) {
-			for (Address vftableAddress : vftableAddresses) {
-				monitor.checkCancelled();
-				allVfunctionsSet.addAll(getVfunctions(vftableAddress));
-			}
+			return Collections.emptySet();
 		}
 
-		return allVfunctionsSet;
+		Set<Function> vfunctionSet = new HashSet<>();
+		for (Address vftableAddress : vftableAddresses) {
+			monitor.checkCancelled();
+			if (!allVfunctions.containsKey(vftableAddress)) {
+				List<Function> funcList = getVfunctions(vftableAddress);
+				if (funcList == null) {
+					funcList = new ArrayList<>();
+				}
+				allVfunctions.put(vftableAddress, new HashSet<>(funcList));
+			}
+			vfunctionSet.addAll(allVfunctions.get(vftableAddress));
+		}
+
+		return vfunctionSet;
 	}
 
 	public Set<Function> getAllClassFunctionsWithVtableRef(List<Address> vftables)
