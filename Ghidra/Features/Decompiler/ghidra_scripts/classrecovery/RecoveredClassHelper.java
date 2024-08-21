@@ -4438,8 +4438,15 @@ public class RecoveredClassHelper {
 					// Set the calling convention
 					vfunction.setCallingConvention(funcDef.getCallingConvention().toString());
 					vfunction.setName(funcDef.getName().replaceAll(" ", "_"), SourceType.IMPORTED);
-					if (classNamespace != null)
-						vfunction.setParentNamespace(classNamespace);
+					try {
+						if (classNamespace == null) {
+						    classNamespace = symbolTable.createNameSpace(globalNamespace, classPath.getName(), SourceType.IMPORTED);
+						}
+						if (classNamespace != null)
+							vfunction.setParentNamespace(classNamespace);
+					} catch (InvalidInputException e) {
+				        Msg.error(this, "Failed to set namespace for function " + vfunction.getName() + ": " + e.getMessage());
+					}
 					vfunction.setReturnType(
 							funcDef.getReturnType() != null ? funcDef.getReturnType() : new VoidDataType(),
 							SourceType.IMPORTED);
