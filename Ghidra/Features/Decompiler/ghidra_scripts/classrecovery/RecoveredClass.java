@@ -204,12 +204,12 @@ public class RecoveredClass {
 		}
 
 		// error if try to add different address to same offset
-//		Address address = classOffsetToVftableMap.get(offset);
-//		if (!address.equals(vftableAddress)) {
-//			throw new Exception(name + " trying to add different vftable address (old: " +
-//				vftableAddress.toString() + " new: " + address.toString() + ")  to same offset " +
-//				offset);
-//		}
+		Address address = classOffsetToVftableMap.get(offset);
+		if (!address.equals(vftableAddress)) {
+			throw new Exception(name + " trying to add different vftable address (old: " +
+				vftableAddress.toString() + " new: " + address.toString() + ")  to same offset " +
+				offset);
+		}
 
 	}
 
@@ -321,9 +321,7 @@ public class RecoveredClass {
 	}
 
 	public void removeFromConstructorDestructorList(Function function) {
-		if (constructorAndDestructorList.contains(function)) {
-			constructorAndDestructorList.remove(function);
-		}
+		constructorAndDestructorList.remove(function);
 	}
 
 	public void addConstructor(Function function) {
@@ -368,10 +366,7 @@ public class RecoveredClass {
 	}
 
 	public void removeIndeterminateInline(Function function) {
-		if (indeterminateInlineList.contains(function)) {
-			indeterminateInlineList.remove(function);
-		}
-		return;
+		indeterminateInlineList.remove(function);
 	}
 
 	public void addIndeterminateConstructorOrDestructorList(List<Function> list) {
@@ -386,10 +381,7 @@ public class RecoveredClass {
 	}
 
 	public void removeIndeterminateConstructorOrDestructor(Function function) {
-		if (indeterminateList.contains(function)) {
-			indeterminateList.remove(function);
-		}
-		return;
+		indeterminateList.remove(function);
 	}
 
 	public List<Function> getConstructorOrDestructorFunctions() {

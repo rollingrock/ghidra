@@ -58,6 +58,8 @@ public class FunctionSignatureParser {
 	private Map<String, String> nameMap = new HashMap<>();
 	private DataTypeManager destDataTypeManager;
 	private ParserDataTypeManagerService dtmService;
+	private boolean cacheChooser = false;
+	private CategoryPath defaultCategory = null;
 
 	/**
 	 * Constructs a SignatureParser for a program.  The destDataTypeManager and/or
@@ -83,6 +85,25 @@ public class FunctionSignatureParser {
 	}
 
 	/**
+	 * Constructs a SignatureParser for a program.  The destDataTypeManager and/or
+	 * service must be specified.
+	 * 
+	 * @param destDataTypeManager the destination datatype maanger.
+	 * @param service the DataTypeManagerService to use for resolving datatypes that
+	 *                can't be found in the given program. Can be null to utilize
+	 *                program based types only.
+	 * @param defaultCategory the default category to check first 
+	 * @param cacheChooser whether to cache the chooser selections across the 
+	 *                signature parser instead of just a single signature. 
+	 *                This is useful for bulk signature processing.
+	 */
+	public FunctionSignatureParser(DataTypeManager destDataTypeManager,
+			DataTypeQueryService service, CategoryPath defaultCategory, boolean cacheChooser) {
+		this(destDataTypeManager, service);
+		this.cacheChooser = cacheChooser;
+		this.defaultCategory = defaultCategory;				
+	}
+	/**
 	 * Parse the given function signature text into a FunctionDefinitionDataType.
 	 *
 	 * @param originalSignature the function signature before editing. This may be
@@ -95,8 +116,10 @@ public class FunctionSignatureParser {
 	 */
 	public FunctionDefinitionDataType parse(FunctionSignature originalSignature,
 			String signatureText) throws ParseException, CancelledException {
-		dtMap.clear();
-		nameMap.clear();
+		if (!cacheChooser){
+			dtMap.clear();
+			nameMap.clear();
+		}
 		if (dtmService != null) {
 			dtmService.clearCache(); // clear datatype selection cache
 		}
@@ -142,6 +165,11 @@ public class FunctionSignatureParser {
 		dtMap.put(dataType.getName(), dataType);
 		cacheDataType(baseType);
 	}
+	
+	private void cacheDataType(DataType dataType, String dataTypeString) {
+		dtMap.put(dataTypeString, dataType);
+		cacheDataType(dataType);
+	}
 
 	private boolean hasVarArgs(String newSignatureText) {
 		int startIndex = newSignatureText.lastIndexOf(',');
@@ -175,12 +203,45 @@ public class FunctionSignatureParser {
 		}
 
 		List<ParameterDefinition> parameterList = new ArrayList<>();
-		String[] split = argString.split(",");
+	    List<String> args = parseArguments(argString);
 
-		for (String arg : split) {
+		for (String arg : args) {
 			addParameter(parameterList, arg.trim());
 		}
 		return parameterList.toArray(new ParameterDefinition[parameterList.size()]);
+	}
+
+	private List<String> parseArguments(String argString) throws ParseException {
+	    List<String> arguments = new ArrayList<>();
+	    StringBuilder currentArg = new StringBuilder();
+	    int angleBracketsLevel = 0;
+	    boolean inQuotes = false;
+
+	    for (int i = 0; i < argString.length(); i++) {
+	        char c = argString.charAt(i);
+
+	        if (c == '<') {
+	            angleBracketsLevel++;
+	        } else if (c == '>') {
+	            angleBracketsLevel--;
+	        } else if (c == ',' && angleBracketsLevel == 0 && !inQuotes) {
+	            // End of an argument
+	            arguments.add(currentArg.toString().trim());
+	            currentArg.setLength(0);
+	            continue;
+	        } else if (c == '"') {
+	            inQuotes = !inQuotes; // Toggle quotes state
+	        }
+
+	        currentArg.append(c);
+	    }
+
+	    // Add the last argument
+	    if (currentArg.length() > 0) {
+	        arguments.add(currentArg.toString().trim());
+	    }
+
+	    return arguments;
 	}
 
 	private void addParameter(List<ParameterDefinition> parameterList, String arg)
@@ -251,16 +312,29 @@ public class FunctionSignatureParser {
 	}
 
 	DataType extractReturnType(String signatureText) throws ParseException, CancelledException {
+		String returnTypeName = "";
 		int parenIndex = signatureText.indexOf('(');
 		if (parenIndex < 0) {
 			throw new ParseException("Can't find return type");
 		}
-		String[] split = StringUtils.split(signatureText.substring(0, parenIndex));
-		if (split.length < 2) {
-			throw new ParseException("Can't find return type");
-		}
-		String returnTypeName = StringUtils.join(split, " ", 0, split.length - 1);
+		// Extract the part of the signature before the parentheses
+		String beforeParen = signatureText.substring(0, parenIndex).trim();
+		String[] split = customSplit(beforeParen, "\\s+"); // Split by whitespace
 
+		int keywordIndex = findKeywordIndex(split);
+
+		// If keyword is not found, handle as a single word function name
+		if (keywordIndex == -1) {
+			if (split.length < 2) {
+				throw new ParseException("Can't find return type");
+			}
+			returnTypeName = split[0];
+		} else if (keywordIndex > 1 && keywordIndex < split.length){
+			// Otherwise, we have keyword, join all parts from start to before the keyword
+			returnTypeName = String.join(" ", Arrays.copyOfRange(split, 0, keywordIndex - 1));
+		}
+		if (returnTypeName.isEmpty())
+			returnTypeName = "void";
 		DataType dt = resolveDataType(returnTypeName);
 		if (dt == null) {
 			throw new ParseException("Can't resolve return type: " + returnTypeName);
@@ -275,44 +349,144 @@ public class FunctionSignatureParser {
 
 		DataType dataType = null;
 		try {
-			dataType = dataTypeParser.parse(dataTypeName);
-		}
-		catch (InvalidDataTypeException e) {
-			// ignore - return null
+			if (this.defaultCategory != null) {
+				dataType = dataTypeParser.parse(dataTypeName, this.defaultCategory);
+			}
+			if (dataType != null && cacheChooser) {
+				cacheDataType(dataType, dataTypeName);
+			}
+		} catch (InvalidDataTypeException e) {
+			try {
+				// try again without category
+				dataType = dataTypeParser.parse(dataTypeName);
+				if (dataType != null && cacheChooser) {
+					cacheDataType(dataType, dataTypeName);
+				}
+			} catch (InvalidDataTypeException e2) {
+				// ignore
+			}
 		}
 		return dataType;
 	}
-
+	
 	String extractFunctionName(String signatureText) throws ParseException {
 		int parenIndex = signatureText.indexOf('(');
 		if (parenIndex < 0) {
 			throw new ParseException("Can't find function name");
 		}
-		String[] split = StringUtils.split(signatureText.substring(0, parenIndex));
-		if (split.length < 2) {
-			throw new ParseException("Can't find function name");
-		}
+		// Extract the part of the signature before the parentheses
+		String beforeParen = signatureText.substring(0, parenIndex).trim();
+		String[] split = customSplit(beforeParen, "\\s+"); // Split by whitespace
 
-		String name = split[split.length - 1];
-		return resolveName(name);
+		int keywordIndex = findKeywordIndex(split);
+
+		// If keyword is not found, handle as a single word function name
+	    if (keywordIndex == -1) {
+	        if (split.length < 2) {
+	            throw new ParseException("Can't find function name");
+	        }
+	        return resolveName(split[split.length - 1]);
+	    }
+
+	    // Otherwise, we have operator, Join all parts from "operator" to the end
+	    String name = String.join(" ", Arrays.copyOfRange(split, keywordIndex, split.length));
+	    return resolveName(name);
 	}
 
 	private String resolveName(String name) throws ParseException {
 		if (nameMap.containsKey(name)) {
 			return nameMap.get(name);
 		}
-		if (!canParseName(name)) {
+		// Use findKeywordIndex to identify where the relevant function name starts
+		String[] split = customSplit(name, "\\s+"); // Split by whitespace
+
+		int keywordIndex = findKeywordIndex(split);
+
+		String resolvedName = "";
+		if (keywordIndex != -1) {
+			// Filter out all keywords except "operator"
+			List<String> filteredParts = new ArrayList<>();
+			for (int i = keywordIndex; i < split.length; i++) {
+				if ("operator".equals(split[i]) || !isKeyword(split[i])) {
+					filteredParts.add(split[i]);
+				}
+			}
+			resolvedName = String.join(" ", filteredParts).trim();
+		}else {
+			resolvedName = String.join(" ", split).trim();
+		}
+		if (!canParseName(resolvedName)) {
 			throw new ParseException("Can't parse name: " + name);
 		}
-		return name;
+		nameMap.put(name, resolvedName);
+		return resolvedName;
 	}
 
 	String substitute(String text, String searchString, String replacementString) {
 		return text.replaceFirst(Pattern.quote(searchString), replacementString);
 	}
 
+	/**
+	 * Custom split method to handle complex splitting scenarios, including nested templates and quotes.
+	 * This method uses regex to split the input string based on the provided delimiter regex.
+	 * 
+	 * @param input the string to split
+	 * @param regex the regular expression used to split the string
+	 * @return an array of strings split by the specified regex
+	 */
+	private String[] customSplit(String input, String regex) throws ParseException {
+	    List<String> result = new ArrayList<>();
+	    StringBuilder currentPart = new StringBuilder();
+	    int angleBracketsLevel = 0;
+	    boolean inQuotes = false;
+
+	    Pattern delimiterPattern = Pattern.compile(regex);
+
+	    for (int i = 0; i < input.length(); i++) {
+	        char c = input.charAt(i);
+
+	        if (c == '<') {
+	            angleBracketsLevel++;
+	        } else if (c == '>') {
+	            angleBracketsLevel--;
+	        } else if (c == '"') {
+	            inQuotes = !inQuotes; // Toggle quotes state
+	        } else if (delimiterPattern.matcher(String.valueOf(c)).matches() && angleBracketsLevel == 0 && !inQuotes) {
+	            if (currentPart.length() > 0) {
+	                result.add(currentPart.toString().trim());
+	                currentPart.setLength(0);
+	            }
+	            continue;
+	        }
+
+	        currentPart.append(c);
+	    }
+
+	    // Add the last part
+	    if (currentPart.length() > 0) {
+	        result.add(currentPart.toString().trim());
+	    }
+
+	    return result.toArray(new String[0]);
+	}
+	
+	private int findKeywordIndex(String[] split) {
+    for (int i = split.length - 1; i >= 0; i--) {
+        if (isKeyword(split[i])) {
+            return i;
+        }
+    }
+    return -1;
+}
+	
+	private boolean isKeyword(String word) {
+	    Set<String> keywords = Set.of("const", "__cdecl", "__clrcall", "__stdcall", "__fastcall",
+	                                  "__thiscall", "__vectorcall", "operator");
+	    return keywords.contains(word);
+	}
+	
 	private boolean canParseName(String text) {
-		return !StringUtils.containsAny(text, "()*[], ");
+		return (!StringUtils.containsAny(text, "()*[]") || text.startsWith("operator") && !StringUtils.containsAny(text, "()"));
 	}
 
 	private boolean canParseType(String text) {

@@ -16,7 +16,6 @@
 package ghidra.app.util.bin.format.pdb;
 
 import java.util.List;
-
 import org.apache.commons.lang3.StringUtils;
 
 import ghidra.app.util.SymbolPathParser;
